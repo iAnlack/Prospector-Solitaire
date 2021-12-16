@@ -4,19 +4,57 @@ using UnityEngine;
 
 public class Deck : MonoBehaviour
 {
+    [Header("Set in Inspector")]
+    public bool StartFaceUp = false;
+    // Масти
+    public Sprite SuitClub;
+    public Sprite SuitDiamond;
+    public Sprite SuitHeart;
+    public Sprite SuitSpade;
+
+    public Sprite[] FaceSprites;
+    public Sprite[] RankSprites;
+
+    public Sprite CardBack;
+    public Sprite CardBackGold;
+    public Sprite CardFront;
+    public Sprite CardFrontGold;
+
+    // Шаблоны
+    public GameObject PrefabCard;
+    public GameObject PrefabSprite;
+
     [Header("Set Dynamically")]
     public PT_XMLReader XMLR;
-    public Transform DeckAnchor;
+    public List<string> CardNames;
     public List<Card> Cards;
     public List<Decorator> Decorators;
     public List<CardDefinition> CardDefinitions;
-    public List<string> CardNames;
+    public Transform DeckAnchor;
     public Dictionary<string, Sprite> DictionarySuits;
 
     // InitDeck вызывается экземпляром Prospector, когда будет готов
     public void InitDeck(string deckXMLText)
     {
+        // Создать точку привязки для всех игровых объектов Card в иерархии
+        if (GameObject.Find("Deck") == null)
+        {
+            GameObject anchorGO = new GameObject("Deck");
+            DeckAnchor = anchorGO.transform;
+        }
+
+        // Инициализировать словарь со спрайтами значков мастей
+        DictionarySuits = new Dictionary<string, Sprite>()
+        {
+            {"C", SuitClub },
+            {"D", SuitDiamond },
+            {"H", SuitHeart },
+            {"S", SuitSpade }
+        };
+
         ReadDeck(deckXMLText);
+
+        MakeCards();
     }
 
     // ReadDeck читает указанный XML-файл и создаёт массив экземпляров CardDefinition
@@ -96,5 +134,226 @@ public class Deck : MonoBehaviour
             }
             CardDefinitions.Add(cDef);
         }
+    }
+
+    // Получает CardDefinition на основе значения достоинства (от 1 до 14 - от туза до короля)
+    public CardDefinition GetCardDefinitionByRank(int rank)
+    {
+        // Поиск во всех определениях CardDefinition
+        foreach (CardDefinition cardDefinition in CardDefinitions)
+        {
+            // Если достоинство совпадает вернуть это определение
+            if (cardDefinition.Rank == rank)
+            {
+                return (cardDefinition);
+            }
+        }
+
+        return null;
+    }
+
+    // Создаёт игровые объекты карт
+    public void MakeCards()
+    {
+        // CardNames будет содержать имена сконструированных карт
+        // Каждая масть имеет 14 значений достоинства (например для треф (Clubs): от C1 до C14)
+        CardNames = new List<string>();
+        string[] letters = new string[] { "C", "D", "H", "S" };
+        foreach (string s in letters)
+        {
+            for (int i = 0; i < 13; i++)
+            {
+                CardNames.Add(s + (i + 1));
+            }
+        }
+
+        // Создать список со всеми картами
+        Cards = new List<Card>();
+
+        // Обойти все только что созданные имена карт
+        for (int i = 0; i < CardNames.Count; i++)
+        {
+            // Создать карту и добавить её в колоду
+            Cards.Add(MakeCard(i));
+        }
+    }
+
+    private Card MakeCard(int cNum)
+    {
+        // Создать новый игровой объект с картой
+        GameObject cGO = Instantiate(PrefabCard) as GameObject;
+        // Настроить transform.parent новой карты в соответствии с точкой привязки
+        cGO.transform.parent = DeckAnchor;
+        Card card = cGO.GetComponent<Card>(); // Получить компонент Card
+
+        // Эта строка выкладывает карты в аккуратный ряд
+        cGO.transform.localPosition = new Vector3((cNum % 13) * 3, cNum / 13 * 4, 0);
+
+        // Настроить основные параметры карты
+        card.name = CardNames[cNum];
+        card.Suit = card.name[0].ToString();
+        card.Rank = int.Parse(card.name.Substring(1));
+        if (card.Suit == "D" || card.Suit == "H")
+        {
+            card.ColS = "Red";
+            card.Color = Color.red;
+        }
+
+        // Получить CardDefinition для этой карты
+        card.Definition = GetCardDefinitionByRank(card.Rank);
+
+        AddDecorators(card);
+        AddPips(card);
+        AddFace(card);
+        AddBack(card);
+
+        return card;
+    }
+
+    // Следующие скрытые переменные используются вспомогательными методами
+    private Sprite _tSprite = null;
+    private GameObject _tGameObject = null;
+    private SpriteRenderer _tSpriteRenderer = null;
+
+    private void AddDecorators(Card card)
+    {
+        // Добавить оформление
+        foreach (Decorator decorator in Decorators)
+        {
+            if (decorator.Type == "Suit")
+            {
+                // Создать экземпляр игрового объекта спрайта
+                _tGameObject = Instantiate(PrefabSprite) as GameObject;
+                // Получить ссылку на компонент SpriteRenderer
+                _tSpriteRenderer = _tGameObject.GetComponent<SpriteRenderer>();
+                // Установить спрайт масти
+                _tSpriteRenderer.sprite = DictionarySuits[card.Suit];
+            }
+            else
+            {
+                _tGameObject = Instantiate(PrefabSprite) as GameObject;
+                _tSpriteRenderer = _tGameObject.GetComponent<SpriteRenderer>();
+                // Получить спрайт для отображения достоинства
+                _tSprite = RankSprites[card.Rank];
+                // Установить спрайт достоинства в SpriteRenderer
+                _tSpriteRenderer.sprite = _tSprite;
+                // Установить цвет, соответствующий масти
+                _tSpriteRenderer.color = card.Color;
+            }
+
+            // Поместить спрайты над картой
+            _tSpriteRenderer.sortingOrder = 1;
+            // Сделать спрайт дочерним по отношению к карте
+            _tGameObject.transform.SetParent(card.transform);
+            // Установить localPosition, как определено в DeckXML
+            _tGameObject.transform.localPosition = decorator.Loc;
+            // Перевернуть значок, если необходимо
+            if (decorator.Flip)
+            {
+                // Эйлеров поворот на 180° относительно оси z-axis
+                _tGameObject.transform.rotation = Quaternion.Euler(0, 0, 180);
+            }
+
+            // Установить масштаб, чтобы уменьшить размер спрайта
+            if (decorator.Scale != 1)
+            {
+                _tGameObject.transform.localScale = Vector3.one * decorator.Scale;
+            }
+
+            // Дать имя этому игровому объекту для наглядности
+            _tGameObject.name = decorator.Type;
+            // Добавить этот игровой объект с оформлением в список card.DecoGOs
+            card.DecoGOs.Add(_tGameObject);
+        }
+    }
+
+    private void AddPips(Card card)
+    {
+        // Для каждого значка в определении...
+        foreach (Decorator pip in card.Definition.Pips)
+        {
+            // ... Создать игровой объект спрайта
+            _tGameObject = Instantiate(PrefabSprite) as GameObject;
+            // Назначить родителем игровой объект карты
+            _tGameObject.transform.SetParent(card.transform);
+            // Установить localPosititon, как определено в XML-файле
+            _tGameObject.transform.localPosition = pip.Loc;
+
+            // Перевернуть, если необходимо
+            if (pip.Flip)
+            {
+                _tGameObject.transform.rotation = Quaternion.Euler(0, 0, 180);
+            }
+
+            // Масштабировать, если необходимо (только для туза)
+            if (pip.Scale != 1)
+            {
+                _tGameObject.transform.localScale = Vector3.one * pip.Scale;
+            }
+
+            // Дать имя игровому объекту
+            _tGameObject.name = "pip";
+            // Получить ссылку на компонент SpriteRenderer
+            _tSpriteRenderer = _tGameObject.GetComponent<SpriteRenderer>();
+            // Установить спрайт масти
+            _tSpriteRenderer.sprite = DictionarySuits[card.Suit];
+            // Установить sortingOrder, чтобы значок отображался над Card_Front
+            _tSpriteRenderer.sortingOrder = 1;
+            // Добавить игровой объект в список значков
+            card.PipGOs.Add(_tGameObject);
+        }
+    }
+
+    private void AddFace(Card card)
+    {
+        if (card.Definition.Face == "")
+        {
+            return; // Выйти, если это не карта с картинкой
+        }
+
+        _tGameObject = Instantiate(PrefabSprite) as GameObject;
+        _tSpriteRenderer = _tGameObject.GetComponent<SpriteRenderer>();
+        // Сгенерировать имя и передать его в GetFace()
+        _tSprite = GetFace(card.Definition.Face + card.Suit);
+        _tSpriteRenderer.sprite = _tSprite;   // Установить этот спрайт в _tSpriteRenderer
+        _tSpriteRenderer.sortingOrder = 1;    // Установить sortingOrder
+        _tGameObject.transform.SetParent(card.transform);
+        _tGameObject.transform.localPosition = Vector3.zero;
+        _tGameObject.name = "face";
+    }
+
+    // Находит спрайт с картинкой для карты
+    private Sprite GetFace(string faceS)
+    {
+        foreach (Sprite _tSpriteP in FaceSprites)
+        {
+            // Если найден спрайт с требуемым именем...
+            if (_tSpriteP.name == faceS)
+            {
+                // ... вернуть его
+                return _tSpriteP;
+            }
+        }
+
+        // Если ничего не найдено, вернуть null
+        return null;
+    }
+
+    private void AddBack(Card card)
+    {
+        // Добавить рубашку
+        // Card_Back будет покрывать всё остальное на карте
+        _tGameObject = Instantiate(PrefabSprite) as GameObject;
+        _tSpriteRenderer = _tGameObject.GetComponent<SpriteRenderer>();
+        _tSpriteRenderer.sprite = CardBack;
+        _tGameObject.transform.SetParent(card.transform);
+        _tGameObject.transform.localPosition = Vector3.zero;
+        // Большее значение sortingOrder, чем у других спрайтов
+        _tSpriteRenderer.sortingOrder = 2;
+        _tGameObject.name = "back";
+        card.Back = _tGameObject;
+
+        // По умолчанию картинкой вверх
+        card.FaceUp = StartFaceUp; // Использовать свойство FaceUp карты
     }
 }
