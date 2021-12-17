@@ -11,20 +11,34 @@ public class Prospector : MonoBehaviour
 
     [Header("Set in Inspector")]
     public TextAsset DeckXML;
+    public TextAsset LayoutXML;
 
     [Header("Set Dynamically")]
     public Deck Deck;
+    public Layout Layout;
 
     private void Awake()
     {
         S = this;       // Подготовка объекта-одиночки Prospector
-        Culturator();   // Метод по преобразованию говна к конфетку
+        Culturator();   // Метод по преобразованию говна в конфетку
     }
 
     private void Start()
     {
-        Deck = GetComponent<Deck>();   // Получить компонент Deck
-        Deck.InitDeck(DeckXML.text);   // Передать ему DeckXML
+        Deck = GetComponent<Deck>();    // Получить компонент Deck
+        Deck.InitDeck(DeckXML.text);    // Передать ему DeckXML
+        Deck.Shuffle(ref Deck.Cards);   // Перемешать колоду, передав её по ссылке
+
+        // Этот фрагмент можно закомментировать; сейчас мы создаём фактическую раскладку
+        //Card c;
+        //for (int cNum = 0; cNum < Deck.Cards.Count; cNum++)
+        //{
+        //    c = Deck.Cards[cNum];
+        //    c.transform.localPosition = new Vector3((cNum % 13) * 3, cNum / 13 * 4, 0);
+        //}
+
+        Layout = GetComponent<Layout>();     // Получить компонент Layout
+        Layout.ReadLayout(LayoutXML.text);   // Передать ему содержимое LayoutXML
     }
 
     // Метод, решающий проблему преобразования локальных особенностей символов, связанной с CultureInfo

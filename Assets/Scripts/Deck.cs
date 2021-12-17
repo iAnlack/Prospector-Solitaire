@@ -356,4 +356,28 @@ public class Deck : MonoBehaviour
         // ѕо умолчанию картинкой вверх
         card.FaceUp = StartFaceUp; // »спользовать свойство FaceUp карты
     }
+
+    // ѕеремешивает карты в Deck.Cards
+    static public void Shuffle(ref List<Card> oCards)
+    {
+        // —оздать временный список дл€ хранени€ карт в перемешанном пор€дке
+        List<Card> tCards = new List<Card>();
+
+        int ndx; // Ѕудет хранить индекс перемещаемой карты
+        tCards = new List<Card>(); // »нициализировать временный список
+        // ѕовтор€ть, пока не будут перемещены все карты в исходном списке
+        while (oCards.Count > 0)
+        {
+            // ¬ыбрать случайный индекс карть
+            ndx = Random.Range(0, oCards.Count);
+            // ƒобавить эту карту во временный список...
+            tCards.Add(oCards[ndx]);
+            // ... и удалить карту из исходного списка
+            oCards.RemoveAt(ndx);
+        }
+
+        // «аменить исходный список временным
+        oCards = tCards;
+        // “.к. oCards - это параметр-ссылка (ref), оригинальный аргумент, переданный в метод, тоже изменитс€
+    }
 }
