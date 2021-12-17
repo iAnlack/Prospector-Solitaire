@@ -14,6 +14,8 @@ public class Card : MonoBehaviour
     public List<GameObject> DecoGOs = new List<GameObject>();
     // Этот список хранит все игровые объекты Pip
     public List<GameObject> PipGOs = new List<GameObject>();
+    // Список компонентов SpriteRenderer этого и вложенных в него игровых объектов
+    public SpriteRenderer[] SpriteRenderers;
 
     public GameObject Back;             // Игровой объект рубашки карты
     public CardDefinition Definition;   // Извлекается из DeckXML.xml
@@ -27,6 +29,66 @@ public class Card : MonoBehaviour
         set
         {
             Back.SetActive(!value);
+        }
+    }
+
+    private void Start()
+    {
+        SetSortOrder(0);   // Обеспечит правильную сортировку карт
+    }
+
+    // Если SpriteRenderers не определён, эта функция определит его
+    public void PopulateSpriteRenderers()
+    {
+        // Если SpriteRenderers содержит null или пустой список
+        if (SpriteRenderers == null || SpriteRenderers.Length == 0)
+        {
+            // Получить компоненты SpriteRenderer этого игрового объекта и вложенных в него игровых объектов
+            SpriteRenderers = GetComponentsInChildren<SpriteRenderer>();
+        }
+    }
+
+    // Инициализирует поле sortingLayerName во всех компонентах SpriteRenderer
+    public void SetSortingLayerName(string tSLN)
+    {
+        PopulateSpriteRenderers();
+
+        foreach (SpriteRenderer tSpriteRenderer in SpriteRenderers)
+        {
+            tSpriteRenderer.sortingLayerName = tSLN;
+        }
+    }
+
+    // Инициализирует поле sortingOrder всех компонентов SpriteRenderer
+    public void SetSortOrder(int sOrd)
+    {
+        PopulateSpriteRenderers();
+
+        // Выполнить обход всех элементов в списке SpriteRenderers
+        foreach (SpriteRenderer tSpriteRenderer in SpriteRenderers)
+        {
+            if (tSpriteRenderer.gameObject == this.gameObject)
+            {
+                // Если компонент принадлежит к текущему игровому объекту, это фон
+                tSpriteRenderer.sortingOrder = sOrd; // Установить порядковый номер для сортировки в sOrd
+                continue;                            // И перейти к следующей итерации цикла
+            }
+
+            // Каждый дочерний игровой объект имеет имя
+            // Установить порядковый номер для сортировки, в зависимости от имени
+            switch (tSpriteRenderer.gameObject.name)
+            {
+                case "back":
+                    // Установить наибольший порядковый номер для отображения поверх других спрайтов
+                    tSpriteRenderer.sortingOrder = sOrd + 2;
+                    break;
+
+                case "face": // Если имя "face"
+                default:     // или же другое
+                    // Установить промежуточный порядковый номер для отображения поверх фона
+                    tSpriteRenderer.sortingOrder = sOrd + 1;
+                    break;
+            }
         }
     }
 }
