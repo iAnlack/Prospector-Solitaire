@@ -16,6 +16,7 @@ public class Prospector : MonoBehaviour
     [Header("Set Dynamically")]
     public Deck Deck;
     public Layout Layout;
+    public List<CardProspector> DrawPile;
 
     private void Awake()
     {
@@ -39,6 +40,20 @@ public class Prospector : MonoBehaviour
 
         Layout = GetComponent<Layout>();     // Получить компонент Layout
         Layout.ReadLayout(LayoutXML.text);   // Передать ему содержимое LayoutXML
+        DrawPile = ConvertListCardsToListCardProspectors(Deck.Cards);
+    }
+
+    List<CardProspector> ConvertListCardsToListCardProspectors(List<Card> listCD)
+    {
+        List<CardProspector> listCP = new List<CardProspector>();
+        CardProspector tCP;
+        foreach (Card tCD in listCD)
+        {
+            tCP = tCD as CardProspector;
+            listCP.Add(tCP);
+        }
+
+        return listCP;
     }
 
     // Метод, решающий проблему преобразования локальных особенностей символов, связанной с CultureInfo
