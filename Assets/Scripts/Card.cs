@@ -91,6 +91,12 @@ public class Card : MonoBehaviour
             }
         }
     }
+
+    // ¬иртуальные методы могут переопредел€тьс€ в подклассах определением методов с теми же именами
+    virtual public void OnMouseUpAsButton()
+    {
+        Debug.Log(name);   // ѕо щелчку эта строка выведет им€ карты
+    }
 }
 
 [System.Serializable] // —ериализуемый класс доступен дл€ правки в инспекторе

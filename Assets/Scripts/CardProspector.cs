@@ -22,4 +22,13 @@ public class CardProspector : Card   // CardProspector должен расширять класс Ca
     public int LayoutID;
     // Класс SlotDef хранит информацию из элемента <slot> в LayoutXML
     public SlotDef SlotDef;
+
+    // Определяет реакцию карт на щелчок мыши
+    override public void OnMouseUpAsButton()
+    {
+        // Вызвать метод CardClicked(this) объекта-одиночки Prospector
+        Prospector.S.CardClicked(this);
+        // а также версию этого метода в базовом классе (Card.cs)
+        base.OnMouseUpAsButton();
+    }
 }
