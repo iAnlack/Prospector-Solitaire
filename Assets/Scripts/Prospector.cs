@@ -15,6 +15,10 @@ public class Prospector : MonoBehaviour
     public float XOffset = 3;
     public float YOffset = -2.5f;
     public Vector3 LayoutCenter;
+    public Vector2 FsPosMid = new Vector2(0.5f, 0.90f);
+    public Vector2 FsPosRun = new Vector2(0.5f, 0.75f);
+    public Vector2 FsPosMid2 = new Vector2(0.4f, 1.0f);
+    public Vector2 FsPosEnd = new Vector2(0.5f, 0.95f);
 
     [Header("Set Dynamically")]
     public Deck Deck;
@@ -24,6 +28,7 @@ public class Prospector : MonoBehaviour
     public CardProspector Target;
     public List<CardProspector> Tableau;
     public List<CardProspector> DiscardPile;
+    public FloatingScore FsRun;
 
     private void Awake()
     {
@@ -33,6 +38,8 @@ public class Prospector : MonoBehaviour
 
     private void Start()
     {
+        Scoreboard.S.ScoreSetter = ScoreManager.SCORE;
+
         Deck = GetComponent<Deck>();    // Получить компонент Deck
         Deck.InitDeck(DeckXML.text);    // Передать ему DeckXML
         Deck.Shuffle(ref Deck.Cards);   // Перемешать колоду, передав её по ссылке
@@ -236,6 +243,8 @@ public class Prospector : MonoBehaviour
                 MoveToDiscard(Target);   // Переместить целевую карту в DiscardPile
                 MoveToTarget(Draw());    // Переместить верхюю свободную карту на место целевой
                 UpdateDrawPile();        // Повторно разложить стопку свободных карт
+                ScoreManager.EVENT(eScoreEvent.Draw);
+                FloatingScoreHandler(eScoreEvent.Draw);
                 break;
 
             case eCardState.Tableau:
@@ -260,6 +269,8 @@ public class Prospector : MonoBehaviour
                 Tableau.Remove(cd);   // Удалить из списка Tableau
                 MoveToTarget(cd);     // Сделать эту карту целевой
                 SetTableauFaces();    // Повернуть карты в основной раскладке лицевой стороной вниз или вверх
+                ScoreManager.EVENT(eScoreEvent.Mine);
+                FloatingScoreHandler(eScoreEvent.Mine);
                 break;
 
             case eCardState.Target:
@@ -308,11 +319,15 @@ public class Prospector : MonoBehaviour
     {
         if (won)
         {
-            Debug.Log("Game Over. You won! :)");
+            //Debug.Log("Game Over. You won! :)");
+            ScoreManager.EVENT(eScoreEvent.GameWin);
+            FloatingScoreHandler(eScoreEvent.GameWin);
         }
         else
         {
-            Debug.Log("Game Over. You Lost. :(");
+            //Debug.Log("Game Over. You Lost. :(");
+            ScoreManager.EVENT(eScoreEvent.GameLoss);
+            FloatingScoreHandler(eScoreEvent.GameLoss);
         }
 
         // Перезагрузить сцену и сбросить игру в исходное состояние
@@ -347,6 +362,58 @@ public class Prospector : MonoBehaviour
 
         // Иначе вернуть false
         return false;
+    }
+
+    // Обрабатывает движение FloatingScore
+    private void FloatingScoreHandler(eScoreEvent evt)
+    {
+        List<Vector2> fsPoints;
+        switch (evt)
+        {
+            // В случае победы, поражения и завершения хода выполняются одни и те же действия
+            case eScoreEvent.Draw:       // Выбор свободной карты
+            case eScoreEvent.GameWin:    // Победа в раунде
+            case eScoreEvent.GameLoss:   // Поражение в раунде
+                // Добавить FsRun в Scoreboard
+                if (FsRun != null)
+                {
+                    // Создать точки для кривой Безье
+                    fsPoints = new List<Vector2>();
+                    fsPoints.Add(FsPosRun);
+                    fsPoints.Add(FsPosMid2);
+                    fsPoints.Add(FsPosEnd);
+                    FsRun.ReportFinishTo = Scoreboard.S.gameObject;
+                    FsRun.Init(fsPoints, 0, 1);
+                    // Также скорректировать FontSize
+                    FsRun.FontSizes = new List<float>(new float[] { 28, 36, 4 });
+                    FsRun = null;   // Очистить FsRun, чтобы создать заново
+                }
+                break;
+
+            case eScoreEvent.Mine:       // Удаление карты из основной раскладки
+                // Создать FloatingScore для отображения этого количества очков
+                FloatingScore floatingScore;
+                // Переместить на позиции указателя мыши mousePosition в FsPorRun
+                Vector2 p0 = Input.mousePosition;
+                p0.x /= Screen.width;
+                p0.y /= Screen.height;
+                fsPoints = new List<Vector2>();
+                fsPoints.Add(p0);
+                fsPoints.Add(FsPosMid);
+                fsPoints.Add(FsPosRun);
+                floatingScore = Scoreboard.S.CreateFloatingScore(ScoreManager.CHAIN, fsPoints);
+                floatingScore.FontSizes = new List<float>(new float[] { 4, 50, 28 });
+                if (FsRun == null)
+                {
+                    FsRun = floatingScore;
+                    FsRun.ReportFinishTo = null;
+                }
+                else
+                {
+                    floatingScore.ReportFinishTo = FsRun.gameObject;
+                }
+                break;
+        }
     }
 
 
