@@ -2,8 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEditor.UI;
 using System.Globalization;
+using UnityEngine.UI;
 
 public class Prospector : MonoBehaviour
 {
@@ -19,6 +19,8 @@ public class Prospector : MonoBehaviour
     public Vector2 FsPosRun = new Vector2(0.5f, 0.75f);
     public Vector2 FsPosMid2 = new Vector2(0.4f, 1.0f);
     public Vector2 FsPosEnd = new Vector2(0.5f, 0.95f);
+    public float ReloadDelay = 2f;   // Задержка между раундами
+    public Text GameOverText, RoundResultText, HighScoreText;
 
     [Header("Set Dynamically")]
     public Deck Deck;
@@ -34,6 +36,7 @@ public class Prospector : MonoBehaviour
     {
         S = this;       // Подготовка объекта-одиночки Prospector
         Culturator();   // Метод по преобразованию говна в конфетку
+        SetUpUITexts();
     }
 
     private void Start()
@@ -56,6 +59,42 @@ public class Prospector : MonoBehaviour
         Layout.ReadLayout(LayoutXML.text);   // Передать ему содержимое LayoutXML
         DrawPile = ConvertListCardsToListCardProspectors(Deck.Cards);
         LayoutGame();
+    }
+
+    private void SetUpUITexts()
+    {
+        // Настроить объект HighScore
+        GameObject gameObject = GameObject.Find("HighScore");
+        if (gameObject != null)
+        {
+            HighScoreText = gameObject.GetComponent<Text>();
+        }
+
+        int highScore = ScoreManager.HIGH_SCORE;
+        string hScore = "High Score: " + Utils.AddCommasToNumber(highScore);
+        gameObject.GetComponent<Text>().text = hScore;
+
+        // Настроить надписи, отображаемые в конце раунда
+        gameObject = GameObject.Find("GameOver");
+        if (gameObject != null)
+        {
+            GameOverText = gameObject.GetComponent<Text>();
+        }
+
+        gameObject = GameObject.Find("RoundResult");
+        if (gameObject != null)
+        {
+            RoundResultText = gameObject.GetComponent<Text>();
+        }
+
+        // Скрыть надписи
+        ShowResultsUI(false);
+    }
+
+    private void ShowResultsUI(bool show)
+    {
+        GameOverText.gameObject.SetActive(show);
+        RoundResultText.gameObject.SetActive(show);
     }
 
     // Функция Draw снимает одну карту с вершины DrawPile и возвращает её
@@ -317,19 +356,49 @@ public class Prospector : MonoBehaviour
     // Вызывается, когда игра завершилась.
     private void GameOver(bool won)
     {
+        int score = ScoreManager.SCORE;
+        if (FsRun != null)
+        {
+            score += FsRun.ScoreSetter;
+        }
+
         if (won)
         {
+            GameOverText.text = "Round Over";
+            RoundResultText.text = "You won this round!\nRound Score: " + score;
+            ShowResultsUI(true);
             //Debug.Log("Game Over. You won! :)");
             ScoreManager.EVENT(eScoreEvent.GameWin);
             FloatingScoreHandler(eScoreEvent.GameWin);
         }
         else
         {
+            GameOverText.text = "Game Over";
+            if (ScoreManager.HIGH_SCORE <= score)
+            {
+                string str = "You got the high score!\nHigh score: " + score;
+                RoundResultText.text = str;
+            }
+            else
+            {
+                RoundResultText.text = "Your final score was: " + score;
+            }
+            ShowResultsUI(true);
             //Debug.Log("Game Over. You Lost. :(");
             ScoreManager.EVENT(eScoreEvent.GameLoss);
             FloatingScoreHandler(eScoreEvent.GameLoss);
         }
 
+        // Перезагрузить сцену и сбросить игру в исходное состояние
+        //SceneManager.LoadScene("Prospector Scene 0");
+
+        // Перезагрузить сцену через ReloadDelay секунд
+        // Это позволит числу с очками долететь до места назначения
+        Invoke("ReloadLevel", ReloadDelay);
+    }
+
+    private void ReloadLevel()
+    {
         // Перезагрузить сцену и сбросить игру в исходное состояние
         SceneManager.LoadScene("Prospector Scene 0");
     }
@@ -393,7 +462,7 @@ public class Prospector : MonoBehaviour
             case eScoreEvent.Mine:       // Удаление карты из основной раскладки
                 // Создать FloatingScore для отображения этого количества очков
                 FloatingScore floatingScore;
-                // Переместить на позиции указателя мыши mousePosition в FsPorRun
+                // Переместить из позиции указателя мыши mousePosition в FsPosRun
                 Vector2 p0 = Input.mousePosition;
                 p0.x /= Screen.width;
                 p0.y /= Screen.height;
